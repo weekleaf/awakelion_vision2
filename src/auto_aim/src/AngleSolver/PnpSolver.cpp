@@ -60,8 +60,8 @@ void AngleSolver::BufferSetFilter( ArmorInfo & BestArmor, CarData CarDatas){
     BestArmor.tz =old_objectP.z + KF_forecast.x_(5)/1000*t;
     Angle_t at = ComputeShootTime(BestArmor.tx,BestArmor.ty,BestArmor.tz,CarDatas);
 
-    BestArmor.pitch = at.pitch   - (CarDatas.pitch - old_carDatas.pitch);
-    BestArmor.yaw = at.yaw - (CarDatas.yaw - old_carDatas.yaw);
+    BestArmor.pitch = at.pitch   /*- (CarDatas.pitch - old_carDatas.pitch)*/;
+    BestArmor.yaw = at.yaw /*- (CarDatas.yaw - old_carDatas.yaw)*/;
     BestArmor.tx = old_objectP.x;
     BestArmor.ty = old_objectP.y;
     BestArmor.tz = old_objectP.z;
@@ -277,10 +277,10 @@ Angle_t AngleSolver::ComputeShootTime(float tx, float ty, float distance,struct 
     float tz = distance/100.0;
 //    std::cout<<"缓冲计算tx:"<<tx<<"  ty:"<<ty<<" tz:"<<distance<<std::endl;
     float speed = CarDatas.ShootSpeed;
-    speed = 27;            //不用电控发来的速度 自己给speed赋值
-    double a = -0.5*G*(pow(tz,2)+pow(tx,2));
+    speed = 25;            //不用电控发来的速度 自己给speed赋值
+    double a = -0.5*grav*(pow(tz,2)+pow(tx,2));
     double b = sqrt((pow(tz,2)+pow(tx,2)))*pow(speed,2);
-    double c = -0.5*G*(pow(tz,2)+pow(tx,2)) - pow(speed,2)*ty;
+    double c = -0.5*grav*(pow(tz,2)+pow(tx,2)) - pow(speed,2)*ty;
     //判别式
     double Discriminant =pow(b,2)-4*a*c;// pow(a,2)+pow(b,2)-4*a*c;
 //    cout<<"判别式:"<<Discriminant<<"   a:"<<a<<"   b:"<<b<<"   c:"<<c<<endl;

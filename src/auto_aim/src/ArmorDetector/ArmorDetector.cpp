@@ -1,9 +1,16 @@
 ﻿#include "auto_aim/ArmorDetector/ArmorDetector.h"
+#include "ros/ros.h"
+#include "robot_driver/vision_rx_data.h"
+#include "robot_driver/vision_tx_data.h"
+
+extern ros::Publisher vision_pub;
+extern robot_driver::vision_tx_data pc_recv_mesg;
+extern robot_driver::vision_rx_data pc_send_mesg;
 
 auto detector = PicoDet("/home/rm/git_repository/awakelion_vision2/src/auto_aim/pico64_2023_5.onnx");
 
 ArmorInfo Armor_old;  //保存上一帧装甲
-#define LOST_MAX 6        //掉帧缓冲
+#define LOST_MAX 0        //掉帧缓冲
 #define MIN_DISTANCE 120 //两次相同目标距离
 int lost_number = LOST_MAX;          //记录掉帧次数
 std::string last_label = "";
@@ -52,10 +59,13 @@ void ArmorDetector::armorDetecProc(cv::Mat src, AngleSolver &angle_slover,
     Getcardatas(Cardates);
     // 4.解算角度
     if(BestArmordate.status == buffering){ //缓冲状态
-             std::cout<<"BestArmordate.status is : "<<BestArmordate.status<<"处于缓冲阶段！！！"<<std::endl;
+        std::cout<<"BestArmordate.status is : "<<BestArmordate.status<<"处于缓冲阶段！！！"<<std::endl;
         angle_slover.BufferSetFilter(BestArmordate,Cardates);
+        pc_recv_mesg.visual_valid = 1;
+        pc_recv_mesg.aim_pitch = BestArmordate.pitch;
+        pc_recv_mesg.aim_yaw = BestArmordate.yaw;
     }else if(BestArmordate.status == FirstFind || BestArmordate.status == Shoot) {
-             std::cout<<"BestArmordate.status is : "<<BestArmordate.status<<"       准备开始角度解算！！！"<<std::endl;//0首次 1射击 3缓冲
+        std::cout<<"BestArmordate.status is : "<<BestArmordate.status<<"       准备开始角度解算！！！"<<std::endl;//0首次 1射击 3缓冲
 
         flag++;
         lost_flag = 0;
@@ -182,15 +192,32 @@ void ArmorDetector::armorDetecProc(cv::Mat src, AngleSolver &angle_slover,
         // pack_data->setPc2StmMesg()->visual_valid = 1;   // 视觉有效位
         // pack_data->setPc2StmMesg()->aim_pitch= pit_final;
         // pack_data->setPc2StmMesg()->aim_yaw = yaw_final;
+        pc_recv_mesg.aim_pitch = pit_final;
+        pc_recv_mesg.aim_yaw = yaw_final;
+        pc_recv_mesg.visual_valid = 1;
+        if(imgPro.label == "G")
+            pc_recv_mesg.label = 7;
+        else if(imgPro.label == "")
+            pc_recv_mesg.label = 0;
+        else
+            pc_recv_mesg.label = std::stoi(imgPro.label);
+        if((pit_final >= -10 && pit_final <= 10) && (yaw_final >= -10 && yaw_final <= 10))
+            pc_recv_mesg.shoot_valid = 1;
+        else
+            pc_recv_mesg.shoot_valid = 0;
     }else{
         // pack_data->setPc2StmMesg()->task_mode = 2;
         // pack_data->setPc2StmMesg()->visual_valid = 0;   // 视觉有效位
         // pack_data->setPc2StmMesg()->aim_pitch= 0;
         // pack_data->setPc2StmMesg()->aim_yaw = 0;
+        pc_recv_mesg.shoot_valid = 0;
+        pc_recv_mesg.label = 0;
+        pc_recv_mesg.aim_pitch = 0;
+        pc_recv_mesg.aim_yaw = 0;
     }
 
     // 6.串口发送
-    
+    vision_pub.publish(pc_recv_mesg);
 }
 
  ArmorInfo ArmorDetector::detectorProc(cv::Mat src, QuadrilateralPos &pos, cv::RotatedRect &rot_rect, bool &is_small,GetNum &imgProc)
@@ -334,7 +361,7 @@ void ArmorDetector::armorDetecProc(cv::Mat src, AngleSolver &angle_slover,
     filter_num++;
 
     armor_num = armor_all_list.size();
-//    std::cout<<"armor_num is:"<<armor_num<<std::endl;
+   std::cout<<"armor_num is:"<<armor_num<<std::endl;
     std::string label;
 //    if(!imgProc.digitDetetor(src,armor_all_list,filter_num,s_max_idx,label))
 //        return false;
@@ -502,7 +529,7 @@ bool ArmorDetector::findArmorFrom2Light(std::vector<LightInfo> &light_list,
 
             rot_rect.points(temp.p);
             for(int k = 0; k < 4; k++)
-                cv::line(ret_3, temp.p[k], temp.p[(k + 1) % 4], cv::Scalar(0, 255, 0), 1, 8);
+                cv::line(ret_3, temp.p[k], temp.p[(k + 1) % 4], cv::Scalar(0, 0, 255), 1, 8);
 #endif // DEBUG_MODE
 
             // 1.高度差
@@ -692,10 +719,16 @@ bool ArmorDetector::findArmorFrom2Light(std::vector<LightInfo> &light_list,
             for(int i = 0; i < 4; i++)
                 //std::cout<<"装甲版焦点第"<<i<<"个："<<p_list[i]<<std::endl; bykj  0-3 ld lu ru rd
                 p[i] = p_list[i];
+#ifdef DEBUG_MODE
+            for(int k = 0; k < 4; k++)
+                cv::line(ret_3, armor.pos.p[k], armor.pos.p[(k+1) % 4], cv::Scalar(0, 255, 0), 3, 8);
+#endif // DEBUG_MODE
 
             armor.rrect = rot_rect;
             armor.s_list={1 - delta_height, (armor_setting->armor_param.delta_angle_max - delta_angle) / armor_setting->armor_param.delta_angle_max, -delta_h / 1.5 + 1};
             armor_list.push_back(armor);
+
+
 
             if(armor_list.size()<1){
                 std::cout<<"armor_list个数少于一个！"<<std::endl;
@@ -703,11 +736,6 @@ bool ArmorDetector::findArmorFrom2Light(std::vector<LightInfo> &light_list,
             } else{
                 return true;
             }
-
-#ifdef DEBUG_MODE
-            for(int k = 0; k < 4; k++)
-                cv::line(ret_3, armor.pos.p[k], armor.pos.p[(k+1) % 4], cv::Scalar(0, 255, 0), 3, 8);
-#endif // DEBUG_MODE
         }
     }
 }
@@ -874,6 +902,10 @@ void ArmorDetector::Getcardatas(CarData & Cardates){
     // Cardates.pitch = unpack_data->getStm2PcMesg()->robot_pitch;
     // Cardates.yaw = unpack_data->getStm2PcMesg()->robot_yaw;
     // Cardates.ShootSpeed = unpack_data->getStm2PcMesg()->armors_Union.info.bullet_speed;
+    Cardates.BeginToNowTime = pc_send_mesg.time_stamp;
+    Cardates.pitch = pc_send_mesg.robot_pitch;
+    Cardates.yaw = pc_send_mesg.robot_yaw;
+    Cardates.ShootSpeed = pc_send_mesg.bullet_level;
 }
 
 double GetNum::GetDistance(cv::Point2f a,cv::Point2f b){

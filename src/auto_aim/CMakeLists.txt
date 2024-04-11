@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   cv_bridge
+  robot_driver
 )
 
 ## System dependencies are found with CMake's conventions
@@ -204,3 +205,74 @@ include
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+include_directories(
+  #OpenVINO推理引擎的头文件
+  /usr/include/ie/
+  /usr/include/ngraph/
+  /usr/include/openvino/
+
+  # ${OpenVINO_LIBRARY_DIRS}
+  
+  #eigen3
+  /usr/include/eigen/
+
+  #迈德威视sdk和openvino库所在路径
+  /lib/
+)
+
+set(HEADERS
+include/${PROJECT_NAME}/ArmorDetector/TargetDetection.h
+include/${PROJECT_NAME}/Settings/Settings.h
+include/${PROJECT_NAME}/Preprocessing/Preprocessing.h
+include/${PROJECT_NAME}/AngleSolver/PnpSolver.h
+include/${PROJECT_NAME}/Gui/Gui.h
+include/${PROJECT_NAME}/ArmorDetector/ArmorDetector.h
+include/${PROJECT_NAME}/Camera/CameraApi.h
+include/${PROJECT_NAME}/Camera/MVVideoCapture.h
+include/${PROJECT_NAME}/AngleSolver/GravityCompensateResolve.h
+include/${PROJECT_NAME}/AngleSolver/bayesEstimateVelocity.h
+include/${PROJECT_NAME}/AngleSolver/Filter.h
+include/${PROJECT_NAME}/ArmorDetector/NCopenvino.h
+include/${PROJECT_NAME}/kalman/armor_kalman.h
+)
+
+set(SOURCES
+src/AngleSolver/Filter.cpp
+src/ArmorDetector/TargetDetection.cpp
+src/Settings/Settings.cpp
+src/Preprocessing/Preprocessing.cpp
+src/AngleSolver/PnpSolver.cpp
+src/main.cpp
+src/Camera/MVVideoCapture.cpp
+src/Gui/Gui.cpp
+src/ArmorDetector/ArmorDetector.cpp
+src/AngleSolver/GravityCompensateResolve.cpp
+src/AngleSolver/bayesEstimateVelocity.cpp
+src/ArmorDetector/Ncopenvino.cpp
+src/kalman/armor_kalman.cpp
+)
+
+add_executable(${PROJECT_NAME}_node ${SOURCES} ${HEADERS})
+  target_link_libraries(${PROJECT_NAME}_node
+  ${catkin_LIBRARIES}
+  ${InferenceEngine_LIBRARIES}
+  libopenvino.so
+  libopenvino_c.so
+  libopenvino.so.2231
+  libopenvino_c.so.2231
+  libopenvino.so.2022.3.1
+  libopenvino_c.so.2022.3.1
+  libopenvino_onnx_frontend.so
+  libopenvino_paddle_frontend.so
+  # libopenvino_ir_frontend.so.2231
+  libopenvino_onnx_frontend.so.2231
+  libopenvino_tensorflow_frontend.so
+  # libopenvino_ir_frontend.so.2022.3.1
+  libopenvino_paddle_frontend.so.2231
+  libopenvino_onnx_frontend.so.2022.3.1
+  libopenvino_paddle_frontend.so.2022.3.1
+  libopenvino_tensorflow_frontend.so.2231
+  libopenvino_tensorflow_frontend.so.2022.3.1
+  -pthread
+  libMVSDK.so
+ )

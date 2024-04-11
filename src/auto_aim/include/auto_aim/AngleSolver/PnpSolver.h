@@ -2,14 +2,14 @@
 #define PNPSOLVER_H
 
 #include <math.h>
-#include <QTextStream>
-#include <QFile>
+// #include <QTextStream>
+// #include <QFile>
 
 #include "auto_aim/Settings/Settings.h"
 #include "auto_aim/AngleSolver/GravityCompensateResolve.h"
 #include"auto_aim/AngleSolver/Filter.h"
 
-#define G 9.8
+#define grav 9.8
 
 
 class AngleSolver

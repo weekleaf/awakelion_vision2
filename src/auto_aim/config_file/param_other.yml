@@ -3,14 +3,14 @@
 main_mode: 0
 enemy_color: 0
 debug-b_show_src: 0
-debug-b_show_bin: 0
+debug-b_show_bin: 1
 debug-b_thre_mode: 1
 debug-b_dist_mode: 2
 debug-b_show_digit_bin: 1
 debug-b_show_digit_roi: 0
-debug-b_show_target: 0
-debug-b_show_armor: 0
-debug-b_show_result: 0
+debug-b_show_target: 1
+debug-b_show_armor: 1
+debug-b_show_result: 1
 debug-b_show_fps: 0
 debug-b_save_result: 0
 debug-n_save_result: 744
@@ -33,5 +33,5 @@ port_param-stopbits: 1
 port_param-parity: 110
 min_confidence: 7
 min_param: 4
-min_score: 60
+min_score: 61
 min_strike_value: 60
